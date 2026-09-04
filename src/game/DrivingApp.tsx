@@ -6,7 +6,6 @@ import {
   PauseMenu,
   Results,
   RotatePrompt,
-  StartCountdown,
   StartGuide,
   TouchControls,
 } from "./overlays";
@@ -19,7 +18,6 @@ export function DrivingApp() {
   const engineRef = useRef<DriveEngine | null>(null);
   const [ready, setReady] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<CourseId | null>(null);
-  const [countdown, setCountdown] = useState<{ course: CourseId; value: number } | null>(null);
   const phase = useDrive((s) => s.phase);
   const hud = useDrive((s) => s.hud);
   const muted = useDrive((s) => s.muted);
@@ -47,19 +45,6 @@ export function DrivingApp() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!countdown) return;
-    const timer = window.setTimeout(() => {
-      if (countdown.value > 1) {
-        setCountdown({ ...countdown, value: countdown.value - 1 });
-        return;
-      }
-      setCountdown(null);
-      engineRef.current?.start(countdown.course);
-    }, 1000);
-    return () => window.clearTimeout(timer);
-  }, [countdown]);
-
   const retry = () => {
     const eng = engineRef.current;
     if (!eng) return;
@@ -72,7 +57,7 @@ export function DrivingApp() {
     if (!eng) return;
     eng.audio.unlock();
     eng.audio.setMuted(useDrive.getState().muted);
-    setCountdown({ course: selectedCourse, value: 3 });
+    eng.start(selectedCourse);
     setSelectedCourse(null);
   };
 
@@ -98,7 +83,6 @@ export function DrivingApp() {
           onStart={launch}
         />
       ) : null}
-      {countdown ? <StartCountdown count={countdown.value} /> : null}
       {phase === "playing" ? (
         <>
           <Hud hud={hud} onPause={() => engineRef.current?.pause()} />

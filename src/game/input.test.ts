@@ -6,14 +6,23 @@ test("touch controls queue an edge until the next snapshot", () => {
   const input = new Input();
   input.triggerSignalLeft();
   input.triggerGearReverse();
+  input.triggerHeadlights();
+  input.triggerHighBeam();
+  input.triggerWiper();
 
   const first = input.snapshot();
   assert.equal(first.signalLeftEdge, true);
   assert.equal(first.gearReverseEdge, true);
+  assert.equal(first.headlightsEdge, true);
+  assert.equal(first.highBeamEdge, true);
+  assert.equal(first.wiperEdge, true);
 
   const second = input.snapshot();
   assert.equal(second.signalLeftEdge, false);
   assert.equal(second.gearReverseEdge, false);
+  assert.equal(second.headlightsEdge, false);
+  assert.equal(second.highBeamEdge, false);
+  assert.equal(second.wiperEdge, false);
 });
 
 test("resetTouch releases held pedals and queued actions", () => {

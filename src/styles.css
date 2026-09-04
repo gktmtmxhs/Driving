@@ -152,6 +152,167 @@ body {
   margin-bottom: 7rem;
 }
 
+.steering-console {
+  width: 15rem;
+}
+
+.control-stalk {
+  position: absolute;
+  inset-block: 0;
+  z-index: 5;
+  width: 5.25rem;
+}
+
+.control-stalk--left {
+  left: 0;
+}
+
+.control-stalk--right {
+  right: 0;
+}
+
+.stalk-shaft {
+  position: absolute;
+  top: 50%;
+  height: 0.55rem;
+  width: 3.5rem;
+  border: 1px solid rgb(232 234 238 / 0.16);
+  background: linear-gradient(180deg, #353a41, #15181d 62%);
+  box-shadow: 0 3px 8px rgb(0 0 0 / 0.42);
+}
+
+.control-stalk--left .stalk-shaft {
+  right: -1.15rem;
+  transform: translateY(-50%) rotate(7deg);
+  transform-origin: right center;
+}
+
+.control-stalk--right .stalk-shaft {
+  left: -1.15rem;
+  transform: translateY(-50%) rotate(-7deg);
+  transform-origin: left center;
+}
+
+.stalk-body,
+.turn-stalk {
+  border: 1px solid rgb(232 234 238 / 0.2);
+  color: var(--color-fg);
+  background: linear-gradient(180deg, rgb(52 57 64 / 0.96), rgb(18 21 26 / 0.96));
+  box-shadow:
+    inset 0 1px rgb(255 255 255 / 0.08),
+    0 5px 12px rgb(0 0 0 / 0.34);
+  backdrop-filter: blur(8px);
+}
+
+.stalk-body--left {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  display: grid;
+  width: 5rem;
+  height: 2.75rem;
+  grid-template-columns: 1fr 1fr;
+  overflow: hidden;
+  border-radius: 0.65rem 0.3rem 0.3rem 0.65rem;
+  transform: translateY(-50%) rotate(7deg);
+}
+
+.stalk-function {
+  display: grid;
+  min-width: 0;
+  place-items: center;
+  gap: 0;
+  border-right: 1px solid rgb(232 234 238 / 0.16);
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.stalk-function:last-child {
+  border-right: 0;
+}
+
+.stalk-function svg,
+.stalk-body--right svg {
+  width: 1.35rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.stalk-function.is-active {
+  color: #65c889;
+  background: rgb(61 154 106 / 0.17);
+}
+
+.stalk-function.is-high {
+  color: #6aa9ff;
+  background: rgb(64 126 218 / 0.2);
+}
+
+.turn-stalk {
+  position: absolute;
+  left: 0.4rem;
+  z-index: 2;
+  display: grid;
+  width: 2.75rem;
+  height: 2.5rem;
+  place-items: center;
+  border-radius: 0.55rem;
+  color: var(--color-muted);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.turn-stalk--right {
+  top: 0;
+  transform: rotate(7deg);
+}
+
+.turn-stalk--left {
+  bottom: 0;
+  transform: rotate(7deg);
+}
+
+.turn-stalk.is-active {
+  border-color: rgb(61 154 106 / 0.9);
+  color: #8ce0aa;
+  background: linear-gradient(180deg, rgb(47 104 69 / 0.98), rgb(18 45 29 / 0.98));
+}
+
+.stalk-body--right {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  display: grid;
+  width: 4.2rem;
+  height: 3.25rem;
+  place-items: center;
+  gap: 0;
+  border-radius: 0.3rem 0.7rem 0.7rem 0.3rem;
+  transform: translateY(-50%) rotate(-7deg);
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.stalk-body--right.is-active {
+  border-color: rgb(197 206 216 / 0.38);
+  color: var(--color-fg);
+  background: linear-gradient(180deg, rgb(63 69 77 / 0.98), rgb(24 28 34 / 0.98));
+}
+
+.stalk-function:active,
+.turn-stalk:active,
+.stalk-body--right:active {
+  filter: brightness(1.22);
+}
+
 .camera-frame {
   pointer-events: none;
   position: absolute;
@@ -263,8 +424,12 @@ body {
 
 @media (max-width: 380px) {
   .touch-controls {
-    gap: 0.5rem;
-    padding-inline: 0.5rem;
+    gap: 0.25rem;
+    padding-inline: 0.25rem;
+  }
+
+  .steering-console {
+    width: 13.5rem;
   }
 
   .steer-wheel {
@@ -272,9 +437,12 @@ body {
     height: 6rem;
   }
 
-  .signal-control {
-    min-width: 2.5rem;
-    padding-inline: 0.625rem;
+  .control-stalk {
+    width: 4.6rem;
+  }
+
+  .stalk-body--left {
+    width: 4.5rem;
   }
 
   .gear-selector > button {
@@ -282,7 +450,7 @@ body {
   }
 
   .pedal-control {
-    width: 3.5rem;
+    width: 3rem;
   }
 }
 
@@ -303,7 +471,8 @@ body {
 
   .hud-bottom {
     margin-bottom: 0.75rem;
-    padding-inline: 6.5rem;
+    padding-left: 15rem;
+    padding-right: 7rem;
   }
 
   .hud-instruction {

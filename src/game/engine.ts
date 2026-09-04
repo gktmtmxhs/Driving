@@ -56,6 +56,9 @@ export class DriveEngine {
   private rightMirrorCam: THREE.PerspectiveCamera;
   private rig = new THREE.Group();
   private wheel!: THREE.Object3D;
+  private headlamps: THREE.SpotLight[] = [];
+  private wipers: THREE.Group[] = [];
+  private wiperT = 0;
   private world: WorldRuntime | null = null;
   private aiMeshes: THREE.Group[] = [];
   private pedMeshes: THREE.Group[] = [];
@@ -256,6 +259,24 @@ export class DriveEngine {
     wheel.rotation.x = -0.28;
     this.wheel = wheel;
 
+    const makeWiper = (x: number) => {
+      const wiper = new THREE.Group();
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.34, 0.014), blackMat);
+      arm.position.y = 0.17;
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.018, 0.018), blackMat);
+      blade.position.set(0.09, 0.33, 0);
+      blade.rotation.z = -0.18;
+      const pivot = new THREE.Mesh(new THREE.CylinderGeometry(0.027, 0.027, 0.025, 12), metalMat);
+      pivot.rotation.x = Math.PI / 2;
+      wiper.add(arm, blade, pivot);
+      wiper.position.set(x, 0.79, -0.5);
+      wiper.rotation.x = -0.18;
+      return wiper;
+    };
+    const wiperL = makeWiper(-0.34);
+    const wiperR = makeWiper(0.34);
+    this.wipers = [wiperL, wiperR];
+
     interior.add(
       hood,
       hoodCrease,
@@ -272,6 +293,8 @@ export class DriveEngine {
       doorTopL,
       doorTopR,
       wheel,
+      wiperL,
+      wiperR,
     );
     interior.traverse((o) => {
       o.layers.set(1);
@@ -279,6 +302,16 @@ export class DriveEngine {
       if (m.isMesh) m.castShadow = false;
     });
     this.rig.add(interior);
+
+    for (const x of [-0.56, 0.56]) {
+      const lamp = new THREE.SpotLight(0xffefd2, 0, 85, 0.34, 0.55, 1.35);
+      const target = new THREE.Object3D();
+      lamp.position.set(x, 0.58, -2.18);
+      target.position.set(x, 0.18, -34);
+      lamp.target = target;
+      this.rig.add(lamp, target);
+      this.headlamps.push(lamp);
+    }
 
     const chevronGeo = new THREE.ConeGeometry(0.35, 0.9, 3);
     chevronGeo.rotateX(Math.PI / 2);
@@ -431,7 +464,6 @@ export class DriveEngine {
   }
 
   private syncVisuals(dt: number) {
-    void dt;
     if (!this.running) return;
     this.rig.position.set(this.sim.x, this.sim.y, this.sim.z);
     this.rig.rotation.order = "YXZ";
@@ -443,6 +475,32 @@ export class DriveEngine {
     this.camera.fov = baseFov + Math.min(3, kmh * 0.04);
     this.camera.rotation.z = 0;
     this.camera.updateProjectionMatrix();
+
+    const headlightIntensity = this.sim.headlights ? (this.sim.highBeam ? 125 : 58) : 0;
+    for (const lamp of this.headlamps) {
+      lamp.intensity = headlightIntensity;
+      lamp.distance = this.sim.highBeam ? 125 : 72;
+      lamp.angle = this.sim.highBeam ? 0.2 : 0.36;
+      lamp.penumbra = this.sim.highBeam ? 0.38 : 0.62;
+      lamp.color.setHex(this.sim.highBeam ? 0xe5efff : 0xffefd2);
+    }
+
+    let wiperSweep = 0;
+    if (this.sim.wiper === "off") {
+      this.wiperT = 0;
+    } else {
+      const speed = this.sim.wiper === "high" ? 1.85 : this.sim.wiper === "low" ? 1.05 : 1;
+      this.wiperT += dt * speed;
+      if (this.sim.wiper === "int") {
+        const cycle = this.wiperT % 3.2;
+        if (cycle < 0.82) wiperSweep = 0.5 - Math.cos((cycle / 0.82) * Math.PI * 2) * 0.5;
+      } else {
+        wiperSweep = 0.5 - Math.cos(this.wiperT * Math.PI * 2) * 0.5;
+      }
+    }
+    for (let i = 0; i < this.wipers.length; i++) {
+      this.wipers[i].rotation.z = -1.08 + wiperSweep * 1.86 + i * 0.04;
+    }
 
     this.sun.position.set(this.sim.x + 40, 70, this.sim.z + 18);
     this.sun.target.position.set(this.sim.x, 0, this.sim.z);

@@ -10,6 +10,9 @@ type EngineHandle = {
     throttleTouch: number;
     triggerSignalLeft: () => void;
     triggerSignalRight: () => void;
+    triggerHeadlights: () => void;
+    triggerHighBeam: () => void;
+    triggerWiper: () => void;
     triggerGearDrive: () => void;
     triggerGearReverse: () => void;
     resetTouch: () => void;
@@ -97,10 +100,10 @@ export function Menu({
         <footer className="mt-4 rounded-lg border border-border bg-surface/80 px-4 py-3 text-sm leading-relaxed text-muted">
           <p className="font-medium text-fg">조작</p>
           <p className="desktop-only mt-1">
-            키보드 W/S 가속·제동, A/D 조향, Z/C 방향지시등, Q 후진, E 전진, Esc 일시정지.
+            W/S 가속·제동, A/D 조향, Z/C 방향지시등, L 전조등, K 상향등, V 와이퍼.
           </p>
           <p className="mobile-only mt-1">
-            왼쪽 핸들을 밀고, 오른쪽 가속·제동 페달을 길게 누릅니다.
+            핸들을 밀어 조향하고 양옆 레버로 방향지시등·조명·와이퍼를 조작합니다.
           </p>
         </footer>
       </div>
@@ -148,9 +151,9 @@ export function StartGuide({
             desc="가속과 제동을 동시에 누르지 마세요."
           />
           <GuideRow
-            badge="등·기어"
-            title="방향등과 D·R을 따로 선택"
-            desc="D는 전진, R은 후진입니다. 미러의 왼쪽 뒤·오른쪽 뒤 표기를 확인하세요."
+            badge="레버"
+            title="핸들 양옆 조작계를 사용"
+            desc="왼쪽은 방향지시등·조명, 오른쪽은 와이퍼입니다. D는 전진, R은 후진입니다."
           />
         </div>
         <p className="mt-4 rounded-lg bg-surface-2 px-3 py-2 text-sm leading-relaxed text-muted">
@@ -178,21 +181,6 @@ function GuideRow({ badge, title, desc }: { badge: string; title: string; desc: 
       <div>
         <p className="font-medium text-fg">{title}</p>
         <p className="mt-0.5 leading-relaxed text-muted">{desc}</p>
-      </div>
-    </div>
-  );
-}
-
-export function StartCountdown({ count }: { count: number }) {
-  return (
-    <div
-      className="absolute inset-0 z-40 grid place-items-center bg-bg/65 backdrop-blur-sm"
-      aria-live="assertive"
-      aria-label={`${count}초 후 출발`}
-    >
-      <div className="text-center">
-        <p className="hud-num text-8xl font-semibold text-fg">{count}</p>
-        <p className="mt-3 text-base font-medium text-muted">양손을 조작 위치에 올리세요</p>
       </div>
     </div>
   );
@@ -284,6 +272,16 @@ export function Hud({ hud, onPause }: { hud: HudState; onPause: () => void }) {
           >
             {hud.gear}
           </span>
+          {hud.headlights || hud.wiper !== "off" ? (
+            <span className="flex items-center gap-1.5 rounded bg-cluster/85 px-2 py-1 text-xs font-semibold text-fg backdrop-blur-sm">
+              {hud.headlights ? (
+                <span className={hud.highBeam ? "text-[#6aa9ff]" : "text-go"}>
+                  {hud.highBeam ? "상향" : "전조"}
+                </span>
+              ) : null}
+              {hud.wiper !== "off" ? <span>와이퍼 {wiperLabel(hud.wiper)}</span> : null}
+            </span>
+          ) : null}
           {hud.light !== "none" ? (
             <span
               className="flex items-center gap-1.5 text-xs text-fg"
@@ -354,6 +352,32 @@ function SignalLamp({ side, on }: { side: "L" | "R"; on: boolean }) {
   );
 }
 
+function HeadlightGlyph({ high = false }: { high?: boolean }) {
+  return (
+    <svg viewBox="0 0 28 20" aria-hidden="true">
+      <path d="M11 3.5C7.5 4.4 5.2 7 5.2 10s2.3 5.6 5.8 6.5V3.5Z" />
+      <path d={high ? "M14 5h9M14 10h9M14 15h9" : "M14 5.5l8 2M14 10l8 2M14 14.5l8 2"} />
+    </svg>
+  );
+}
+
+function WiperGlyph() {
+  return (
+    <svg viewBox="0 0 28 20" aria-hidden="true">
+      <path d="M3 15.5c2.6-6 6.2-9 11-9s8.4 3 11 9" />
+      <path d="M8 14.5 21 6" />
+      <path d="M6 3.5h.01M13 2h.01M20 3.5h.01" />
+    </svg>
+  );
+}
+
+function wiperLabel(mode: HudState["wiper"]) {
+  if (mode === "int") return "INT";
+  if (mode === "low") return "LO";
+  if (mode === "high") return "HI";
+  return "OFF";
+}
+
 export function TouchControls({ engine, hud }: { engine: EngineHandle | null; hud: HudState }) {
   const wheelRef = useRef<HTMLDivElement>(null);
   const steerRef = useRef(hud.steer);
@@ -409,54 +433,17 @@ export function TouchControls({ engine, hud }: { engine: EngineHandle | null; hu
 
   return (
     <div className="touch-controls touch-only pointer-events-none absolute inset-x-0 bottom-0 z-20 items-end justify-between gap-3 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-      <div
-        ref={wheelRef}
-        className="steer-wheel pointer-events-auto grid size-28 touch-none place-items-center rounded-full border border-border bg-cluster/85 backdrop-blur-sm"
-        style={{ transform: `rotate(${-hud.steer * 70}deg)` }}
-        role="slider"
-        tabIndex={0}
-        aria-label="조향"
-        aria-valuemin={-100}
-        aria-valuemax={100}
-        aria-valuenow={Math.round(hud.steer * 100)}
-        aria-valuetext={
-          Math.abs(hud.steer) < 0.05
-            ? "중앙"
-            : hud.steer > 0
-              ? `왼쪽 ${Math.round(hud.steer * 100)}`
-              : `오른쪽 ${Math.round(-hud.steer * 100)}`
-        }
-      >
-        <div className="relative size-16 rounded-full border-2 border-muted/50">
-          <span className="absolute left-1/2 top-1/2 h-0.5 w-14 -translate-x-1/2 -translate-y-1/2 bg-muted/45" />
-          <span className="absolute left-1/2 top-1/2 h-14 w-0.5 -translate-x-1/2 -translate-y-1/2 bg-muted/45" />
-          <span className="absolute left-1/2 top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-muted/70" />
-        </div>
-      </div>
-      <div className="pointer-events-auto flex flex-col items-end gap-2">
-        <div className="flex gap-2">
+      <div className="steering-console relative h-28 shrink-0">
+        <div
+          className="control-stalk control-stalk--left pointer-events-auto"
+          role="group"
+          aria-label="왼쪽 콤비네이션 레버"
+        >
+          <span className="stalk-shaft" aria-hidden="true" />
           <button
             type="button"
-            className={`signal-control h-11 min-w-11 rounded-md border px-3 text-sm font-semibold transition-colors ${
-              hud.signal === "left" ? "border-go bg-go text-bg" : "border-border bg-surface text-fg"
-            }`}
-            aria-label="왼쪽 방향지시등"
-            aria-pressed={hud.signal === "left"}
-            onClick={() => {
-              engine.input.triggerSignalLeft();
-              vibrate();
-            }}
-          >
-            ←
-          </button>
-          <button
-            type="button"
-            className={`signal-control h-11 min-w-11 rounded-md border px-3 text-sm font-semibold transition-colors ${
-              hud.signal === "right"
-                ? "border-go bg-go text-bg"
-                : "border-border bg-surface text-fg"
-            }`}
-            aria-label="오른쪽 방향지시등"
+            className={`turn-stalk turn-stalk--right ${hud.signal === "right" ? "is-active" : ""}`}
+            aria-label="레버 위, 오른쪽 방향지시등"
             aria-pressed={hud.signal === "right"}
             onClick={() => {
               engine.input.triggerSignalRight();
@@ -465,6 +452,97 @@ export function TouchControls({ engine, hud }: { engine: EngineHandle | null; hu
           >
             →
           </button>
+          <div className="stalk-body stalk-body--left">
+            <button
+              type="button"
+              className={`stalk-function ${hud.headlights ? "is-active" : ""}`}
+              aria-label={`전조등 ${hud.headlights ? "끄기" : "켜기"}`}
+              aria-pressed={hud.headlights}
+              onClick={() => {
+                engine.input.triggerHeadlights();
+                vibrate();
+              }}
+            >
+              <HeadlightGlyph />
+              <span>{hud.headlights ? "ON" : "OFF"}</span>
+            </button>
+            <button
+              type="button"
+              className={`stalk-function stalk-function--beam ${hud.highBeam ? "is-high" : ""}`}
+              aria-label={`상향등 ${hud.highBeam ? "끄기" : "켜기"}`}
+              aria-pressed={hud.highBeam}
+              onClick={() => {
+                engine.input.triggerHighBeam();
+                vibrate();
+              }}
+            >
+              <HeadlightGlyph high />
+              <span>상향</span>
+            </button>
+          </div>
+          <button
+            type="button"
+            className={`turn-stalk turn-stalk--left ${hud.signal === "left" ? "is-active" : ""}`}
+            aria-label="레버 아래, 왼쪽 방향지시등"
+            aria-pressed={hud.signal === "left"}
+            onClick={() => {
+              engine.input.triggerSignalLeft();
+              vibrate();
+            }}
+          >
+            ←
+          </button>
+        </div>
+
+        <div className="steer-wheel-positioner absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2">
+          <div
+            ref={wheelRef}
+            className="steer-wheel pointer-events-auto grid size-28 touch-none place-items-center rounded-full border border-border bg-cluster/90 backdrop-blur-sm"
+            style={{ transform: `rotate(${-hud.steer * 70}deg)` }}
+            role="slider"
+            tabIndex={0}
+            aria-label="조향"
+            aria-valuemin={-100}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(hud.steer * 100)}
+            aria-valuetext={
+              Math.abs(hud.steer) < 0.05
+                ? "중앙"
+                : hud.steer > 0
+                  ? `왼쪽 ${Math.round(hud.steer * 100)}`
+                  : `오른쪽 ${Math.round(-hud.steer * 100)}`
+            }
+          >
+            <div className="relative size-16 rounded-full border-2 border-muted/50">
+              <span className="absolute left-1/2 top-1/2 h-0.5 w-14 -translate-x-1/2 -translate-y-1/2 bg-muted/45" />
+              <span className="absolute left-1/2 top-1/2 h-14 w-0.5 -translate-x-1/2 -translate-y-1/2 bg-muted/45" />
+              <span className="absolute left-1/2 top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-muted/70" />
+            </div>
+          </div>
+        </div>
+
+        <div
+          className="control-stalk control-stalk--right pointer-events-auto"
+          role="group"
+          aria-label="오른쪽 와이퍼 레버"
+        >
+          <span className="stalk-shaft" aria-hidden="true" />
+          <button
+            type="button"
+            className={`stalk-body stalk-body--right ${hud.wiper !== "off" ? "is-active" : ""}`}
+            aria-label={`와이퍼, 현재 ${wiperLabel(hud.wiper)}, 누르면 다음 단계`}
+            onClick={() => {
+              engine.input.triggerWiper();
+              vibrate();
+            }}
+          >
+            <WiperGlyph />
+            <span>{wiperLabel(hud.wiper)}</span>
+          </button>
+        </div>
+      </div>
+      <div className="pointer-events-auto flex flex-col items-end gap-2">
+        <div className="flex gap-2">
           <GearSelector engine={engine} hud={hud} />
         </div>
         <div className="flex gap-2">

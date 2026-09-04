@@ -4,6 +4,8 @@ export type Gear = "P" | "R" | "N" | "D";
 
 export type Signal = "off" | "left" | "right";
 
+export type WiperMode = "off" | "int" | "low" | "high";
+
 export type LightColor = "green" | "yellow" | "red";
 
 export type Phase = "menu" | "playing" | "paused" | "results";
@@ -41,6 +43,9 @@ export type HudState = {
   brake: number;
   signal: Signal;
   signalBlink: boolean;
+  headlights: boolean;
+  highBeam: boolean;
+  wiper: WiperMode;
   score: number;
   instruction: string;
   instructionAction: WaypointAction;
@@ -69,6 +74,9 @@ export const INITIAL_HUD: HudState = {
   brake: 0,
   signal: "off",
   signalBlink: false,
+  headlights: false,
+  highBeam: false,
+  wiper: "off",
   score: 100,
   instruction: "",
   instructionAction: "straight",

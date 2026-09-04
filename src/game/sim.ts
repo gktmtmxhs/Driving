@@ -9,6 +9,7 @@ import type {
   Signal,
   Violation,
   WaypointAction,
+  WiperMode,
 } from "./types";
 
 const WHEELBASE = 2.65;
@@ -83,6 +84,9 @@ export class Sim {
   gear: Gear = "D";
   signal: Signal = "off";
   signalBlink = false;
+  headlights = false;
+  highBeam = false;
+  wiper: WiperMode = "off";
   score = 100;
   time = 0;
   holdSec = 0;
@@ -122,6 +126,9 @@ export class Sim {
     this.steer = 0;
     this.gear = "D";
     this.signal = "off";
+    this.headlights = false;
+    this.highBeam = false;
+    this.wiper = "off";
     this.score = 100;
     this.time = 0;
     this.instruction = "";
@@ -189,6 +196,18 @@ export class Sim {
     if (input.signalLeftEdge) this.signal = this.signal === "left" ? "off" : "left";
     if (input.signalRightEdge) this.signal = this.signal === "right" ? "off" : "right";
     if (input.signalOffEdge) this.signal = "off";
+    if (input.headlightsEdge) {
+      this.headlights = !this.headlights;
+      if (!this.headlights) this.highBeam = false;
+    }
+    if (input.highBeamEdge) {
+      this.highBeam = !this.highBeam;
+      if (this.highBeam) this.headlights = true;
+    }
+    if (input.wiperEdge) {
+      const modes: WiperMode[] = ["off", "int", "low", "high"];
+      this.wiper = modes[(modes.indexOf(this.wiper) + 1) % modes.length];
+    }
     if (input.respawnEdge) this.respawn();
   }
 
@@ -535,6 +554,9 @@ export class Sim {
       brake: this.brake,
       signal: this.signal,
       signalBlink: this.signalBlink,
+      headlights: this.headlights,
+      highBeam: this.highBeam,
+      wiper: this.wiper,
       score: this.score,
       instruction: this.instruction,
       instructionAction: this.instructionAction,

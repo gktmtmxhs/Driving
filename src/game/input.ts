@@ -9,6 +9,9 @@ export type Actions = {
   signalLeftEdge: boolean;
   signalRightEdge: boolean;
   signalOffEdge: boolean;
+  headlightsEdge: boolean;
+  highBeamEdge: boolean;
+  wiperEdge: boolean;
   respawnEdge: boolean;
 };
 
@@ -27,6 +30,9 @@ const GAME_CODES = new Set([
   "KeyZ",
   "KeyC",
   "KeyX",
+  "KeyL",
+  "KeyK",
+  "KeyV",
   "KeyR",
   "KeyF",
   "KeyP",
@@ -53,6 +59,9 @@ export class Input {
   private queuedSignalLeft = false;
   private queuedSignalRight = false;
   private queuedSignalOff = false;
+  private queuedHeadlights = false;
+  private queuedHighBeam = false;
+  private queuedWiper = false;
   private queuedRespawn = false;
   private prevPause = false;
   private prevQ = false;
@@ -60,6 +69,9 @@ export class Input {
   private prevZ = false;
   private prevC = false;
   private prevX = false;
+  private prevL = false;
+  private prevK = false;
+  private prevV = false;
   private prevR = false;
   private unbind: Array<() => void> = [];
 
@@ -117,6 +129,18 @@ export class Input {
     this.queuedSignalOff = true;
   }
 
+  triggerHeadlights() {
+    this.queuedHeadlights = true;
+  }
+
+  triggerHighBeam() {
+    this.queuedHighBeam = true;
+  }
+
+  triggerWiper() {
+    this.queuedWiper = true;
+  }
+
   triggerRespawn() {
     this.queuedRespawn = true;
   }
@@ -130,6 +154,9 @@ export class Input {
     this.queuedSignalLeft = false;
     this.queuedSignalRight = false;
     this.queuedSignalOff = false;
+    this.queuedHeadlights = false;
+    this.queuedHighBeam = false;
+    this.queuedWiper = false;
     this.queuedRespawn = false;
   }
 
@@ -185,24 +212,36 @@ export class Input {
     const z = k.has("KeyZ");
     const c = k.has("KeyC");
     const x = k.has("KeyX");
+    const l = k.has("KeyL");
+    const keyK = k.has("KeyK");
+    const v = k.has("KeyV");
     const r = k.has("KeyR");
     const gearReverseEdge = this.queuedGearReverse || (q && !this.prevQ);
     const gearDriveEdge = this.queuedGearDrive || (e && !this.prevE);
     const signalLeftEdge = this.queuedSignalLeft || (z && !this.prevZ);
     const signalRightEdge = this.queuedSignalRight || (c && !this.prevC);
     const signalOffEdge = this.queuedSignalOff || (x && !this.prevX);
+    const headlightsEdge = this.queuedHeadlights || (l && !this.prevL);
+    const highBeamEdge = this.queuedHighBeam || (keyK && !this.prevK);
+    const wiperEdge = this.queuedWiper || (v && !this.prevV);
     const respawnEdge = this.queuedRespawn || (r && !this.prevR);
     this.queuedGearReverse = false;
     this.queuedGearDrive = false;
     this.queuedSignalLeft = false;
     this.queuedSignalRight = false;
     this.queuedSignalOff = false;
+    this.queuedHeadlights = false;
+    this.queuedHighBeam = false;
+    this.queuedWiper = false;
     this.queuedRespawn = false;
     this.prevQ = q;
     this.prevE = e;
     this.prevZ = z;
     this.prevC = c;
     this.prevX = x;
+    this.prevL = l;
+    this.prevK = keyK;
+    this.prevV = v;
     this.prevR = r;
 
     return {
@@ -216,6 +255,9 @@ export class Input {
       signalLeftEdge,
       signalRightEdge,
       signalOffEdge,
+      headlightsEdge,
+      highBeamEdge,
+      wiperEdge,
       respawnEdge,
     };
   }
