@@ -29,6 +29,21 @@ declare global {
 
 const AI_COLORS = [0xcfd4da, 0x5b6b7a, 0xd8cfc4, 0x3d4a42, 0xb9a99a, 0x6a737c, 0xe8e4dc, 0x4a5560];
 
+function createHoodGeometry() {
+  const positions = new Float32Array([
+    -0.84, 0.72, -0.68, 0.84, 0.72, -0.68, 0.7, 0.6, -2.45, -0.7, 0.6, -2.45, -0.84, 0.64, -0.68,
+    0.84, 0.64, -0.68, 0.7, 0.52, -2.45, -0.7, 0.52, -2.45,
+  ]);
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setIndex([
+    0, 1, 2, 0, 2, 3, 4, 6, 5, 4, 7, 6, 0, 4, 5, 0, 5, 1, 1, 5, 6, 1, 6, 2, 2, 6, 7, 2, 7, 3, 3, 7,
+    4, 3, 4, 0,
+  ]);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 export class DriveEngine {
   readonly input = new Input();
   readonly sim = new Sim();
@@ -92,12 +107,12 @@ export class DriveEngine {
     this.sun.shadow.camera.bottom = -70;
     this.scene.add(this.sun);
 
-    this.camera = new THREE.PerspectiveCamera(72, 1, 0.05, 420);
+    this.camera = new THREE.PerspectiveCamera(64, 1, 0.05, 420);
     this.camera.layers.enable(0);
     this.camera.layers.enable(1);
     this.camera.rotation.order = "YXZ";
-    this.camera.position.set(-0.4, 1.2, 0.3);
-    this.camera.rotation.x = -0.08;
+    this.camera.position.set(-0.36, 1.18, 0.24);
+    this.camera.rotation.x = -0.045;
 
     this.rearCam = new THREE.PerspectiveCamera(70, 16 / 9, 0.15, 180);
     this.rearCam.layers.set(0);
@@ -166,65 +181,98 @@ export class DriveEngine {
 
   private buildInterior() {
     const interior = new THREE.Group();
-    interior.traverse(() => {});
-    const vinyl = new THREE.MeshStandardMaterial({
-      color: 0x2a2622,
-      roughness: 0.85,
+    const dashMat = new THREE.MeshStandardMaterial({ color: 0x171a1f, roughness: 0.88 });
+    const trimMat = new THREE.MeshStandardMaterial({ color: 0x282c32, roughness: 0.72 });
+    const bodyMat = new THREE.MeshStandardMaterial({
+      color: 0xc7cdd2,
+      roughness: 0.42,
+      metalness: 0.12,
     });
-    const paint = new THREE.MeshStandardMaterial({
-      color: 0xd8dce0,
+    const seamMat = new THREE.MeshStandardMaterial({ color: 0x727980, roughness: 0.55 });
+    const blackMat = new THREE.MeshStandardMaterial({ color: 0x090a0c, roughness: 0.5 });
+    const metalMat = new THREE.MeshStandardMaterial({
+      color: 0x8e969e,
+      metalness: 0.45,
       roughness: 0.38,
-      metalness: 0.18,
     });
-    const dark = new THREE.MeshStandardMaterial({ color: 0x111214, roughness: 0.5 });
-    const chrome = new THREE.MeshStandardMaterial({
-      color: 0xc5c8cc,
-      metalness: 0.6,
-      roughness: 0.3,
-    });
+    const gaugeMat = new THREE.MeshBasicMaterial({ color: 0xb9c5cf });
 
-    const hood = new THREE.Mesh(new THREE.BoxGeometry(1.72, 0.08, 1.85), paint);
-    hood.position.set(0.38, 0.72, -1.55);
-    const cowl = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.16, 0.35), paint);
-    cowl.position.set(0.38, 0.78, -0.62);
+    // Every body panel uses the vehicle's x=0 centerline. The driver is offset,
+    // but the car itself stays square to the road and the horizon.
+    const hood = new THREE.Mesh(createHoodGeometry(), bodyMat);
+    const hoodCrease = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.012, 1.62), seamMat);
+    hoodCrease.position.set(0, 0.68, -1.53);
+    hoodCrease.rotation.x = -0.068;
 
-    const dash = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.28, 0.42), vinyl);
-    dash.position.set(0.28, 0.72, -0.28);
+    const cowl = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.12, 0.24), bodyMat);
+    cowl.position.set(0, 0.73, -0.57);
 
-    const cluster = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.14, 0.18), dark);
-    cluster.position.set(-0.18, 0.86, -0.22);
+    const dash = new THREE.Mesh(new THREE.BoxGeometry(1.66, 0.24, 0.38), dashMat);
+    dash.position.set(0, 0.69, -0.25);
+    const dashTop = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.06, 0.42), trimMat);
+    dashTop.position.set(0, 0.83, -0.28);
 
-    const pillarL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.85, 0.12), vinyl);
-    pillarL.position.set(-0.82, 1.2, -0.55);
-    pillarL.rotation.z = 0.18;
-    pillarL.rotation.x = -0.35;
+    const cluster = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.13, 0.14), blackMat);
+    cluster.position.set(-0.36, 0.88, -0.24);
+    const gaugeLeft = new THREE.Mesh(new THREE.RingGeometry(0.035, 0.055, 20), gaugeMat);
+    gaugeLeft.position.set(-0.46, 0.88, -0.165);
+    const gaugeRight = gaugeLeft.clone();
+    gaugeRight.position.x = -0.26;
+
+    const pillarL = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.86, 0.11), trimMat);
+    pillarL.position.set(-0.82, 1.2, -0.49);
+    pillarL.rotation.z = 0.13;
+    pillarL.rotation.x = -0.2;
     const pillarR = pillarL.clone();
-    pillarR.position.set(1.12, 1.2, -0.55);
-    pillarR.rotation.z = -0.18;
+    pillarR.position.x = 0.82;
+    pillarR.rotation.z = -0.13;
 
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.06, 0.5), vinyl);
-    roof.position.set(0.2, 1.52, -0.15);
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(1.62, 0.055, 0.44), trimMat);
+    roof.position.set(0, 1.57, -0.18);
+    const rearViewMirror = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.12, 0.045), blackMat);
+    rearViewMirror.position.set(0, 1.37, -0.4);
 
-    const mirrorL = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.12, 0.08), dark);
-    mirrorL.position.set(-0.98, 1.05, -0.48);
-    const mirrorR = mirrorL.clone();
-    mirrorR.position.set(1.28, 1.05, -0.48);
+    const doorTopL = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.12, 1.18), trimMat);
+    doorTopL.position.set(-0.88, 0.69, -0.04);
+    const doorTopR = doorTopL.clone();
+    doorTopR.position.x = 0.88;
 
     const wheel = new THREE.Group();
-    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.022, 8, 24), dark);
-    const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.018, 0.018), chrome);
-    const spoke2 = spoke.clone();
-    spoke2.rotation.z = Math.PI / 3;
-    const spoke3 = spoke.clone();
-    spoke3.rotation.z = -Math.PI / 3;
-    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.03, 10), chrome);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.019, 10, 32), blackMat);
+    const spokeHorizontal = new THREE.Mesh(new THREE.BoxGeometry(0.29, 0.024, 0.025), metalMat);
+    const spokeLeft = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.022, 0.025), metalMat);
+    spokeLeft.position.set(-0.052, -0.055, 0);
+    spokeLeft.rotation.z = -0.78;
+    const spokeRight = spokeLeft.clone();
+    spokeRight.position.x = 0.052;
+    spokeRight.rotation.z = 0.78;
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.057, 0.057, 0.035, 18), blackMat);
     hub.rotation.x = Math.PI / 2;
-    wheel.add(rim, spoke, spoke2, spoke3, hub);
-    wheel.position.set(-0.4, 0.78, -0.34);
-    wheel.rotation.x = -1.15;
+    const column = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.036, 0.26, 12), blackMat);
+    column.rotation.x = Math.PI / 2;
+    column.position.z = -0.12;
+    wheel.add(rim, spokeHorizontal, spokeLeft, spokeRight, hub, column);
+    wheel.position.set(-0.36, 0.82, -0.08);
+    wheel.rotation.x = -0.28;
     this.wheel = wheel;
 
-    interior.add(hood, cowl, dash, cluster, pillarL, pillarR, roof, mirrorL, mirrorR, wheel);
+    interior.add(
+      hood,
+      hoodCrease,
+      cowl,
+      dash,
+      dashTop,
+      cluster,
+      gaugeLeft,
+      gaugeRight,
+      pillarL,
+      pillarR,
+      roof,
+      rearViewMirror,
+      doorTopL,
+      doorTopR,
+      wheel,
+    );
     interior.traverse((o) => {
       o.layers.set(1);
       const m = o as THREE.Mesh;
@@ -391,8 +439,9 @@ export class DriveEngine {
     this.rig.rotation.x = this.sim.pitch;
     this.wheel.rotation.z = -this.sim.steer * 3.1;
     const kmh = Math.abs(this.sim.speed) * 3.6;
-    this.camera.fov = 70 + Math.min(12, kmh * 0.12);
-    this.camera.rotation.z = -this.sim.steer * 0.035 * Math.min(1, kmh / 40);
+    const baseFov = this.canvas.clientHeight > this.canvas.clientWidth ? 70 : 64;
+    this.camera.fov = baseFov + Math.min(3, kmh * 0.04);
+    this.camera.rotation.z = 0;
     this.camera.updateProjectionMatrix();
 
     this.sun.position.set(this.sim.x + 40, 70, this.sim.z + 18);
