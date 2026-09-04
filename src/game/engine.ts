@@ -56,6 +56,10 @@ export class DriveEngine {
   private rightMirrorCam: THREE.PerspectiveCamera;
   private rig = new THREE.Group();
   private wheel!: THREE.Object3D;
+  private indicatorStalk!: THREE.Group;
+  private wiperStalk!: THREE.Group;
+  private headlightMarker!: THREE.MeshStandardMaterial;
+  private wiperMarker!: THREE.MeshStandardMaterial;
   private headlamps: THREE.SpotLight[] = [];
   private wipers: THREE.Group[] = [];
   private wiperT = 0;
@@ -255,9 +259,33 @@ export class DriveEngine {
     column.rotation.x = Math.PI / 2;
     column.position.z = -0.12;
     wheel.add(rim, spokeHorizontal, spokeLeft, spokeRight, hub, column);
-    wheel.position.set(-0.36, 0.82, -0.08);
+    wheel.position.set(-0.36, 0.94, -0.18);
     wheel.rotation.x = -0.28;
     this.wheel = wheel;
+
+    const makeColumnStalk = (side: -1 | 1, markerMat: THREE.MeshStandardMaterial) => {
+      const stalk = new THREE.Group();
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.021, 0.38, 12), blackMat);
+      shaft.rotation.z = Math.PI / 2;
+      shaft.position.x = side * 0.19;
+      const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.032, 0.13, 14), trimMat);
+      grip.rotation.z = Math.PI / 2;
+      grip.position.x = side * 0.405;
+      const marker = new THREE.Mesh(new THREE.TorusGeometry(0.038, 0.006, 6, 18), markerMat);
+      marker.rotation.y = Math.PI / 2;
+      marker.position.x = side * 0.455;
+      stalk.add(shaft, grip, marker);
+      stalk.position.set(-0.36, 0.94, -0.17);
+      return stalk;
+    };
+    this.headlightMarker = new THREE.MeshStandardMaterial({
+      color: 0x555c64,
+      emissive: 0x000000,
+      roughness: 0.45,
+    });
+    this.wiperMarker = this.headlightMarker.clone();
+    this.indicatorStalk = makeColumnStalk(-1, this.headlightMarker);
+    this.wiperStalk = makeColumnStalk(1, this.wiperMarker);
 
     const makeWiper = (x: number) => {
       const wiper = new THREE.Group();
@@ -293,6 +321,8 @@ export class DriveEngine {
       doorTopL,
       doorTopR,
       wheel,
+      this.indicatorStalk,
+      this.wiperStalk,
       wiperL,
       wiperR,
     );
@@ -470,6 +500,21 @@ export class DriveEngine {
     this.rig.rotation.y = this.sim.yaw;
     this.rig.rotation.x = this.sim.pitch;
     this.wheel.rotation.z = -this.sim.steer * 3.1;
+    this.indicatorStalk.rotation.z =
+      this.sim.signal === "left" ? 0.19 : this.sim.signal === "right" ? -0.19 : 0;
+    this.indicatorStalk.position.z = this.sim.highBeam ? -0.115 : -0.07;
+    const wiperSteps = { off: 0, int: 0.08, low: 0.15, high: 0.22 } as const;
+    this.wiperStalk.rotation.z = wiperSteps[this.sim.wiper];
+    this.headlightMarker.color.setHex(
+      this.sim.highBeam ? 0x6aa9ff : this.sim.headlights ? 0x65c889 : 0x555c64,
+    );
+    this.headlightMarker.emissive.setHex(
+      this.sim.highBeam ? 0x245fae : this.sim.headlights ? 0x215f3a : 0x000000,
+    );
+    this.headlightMarker.emissiveIntensity = this.sim.headlights ? 1.5 : 0;
+    this.wiperMarker.color.setHex(this.sim.wiper === "off" ? 0x555c64 : 0xc5ced8);
+    this.wiperMarker.emissive.setHex(this.sim.wiper === "off" ? 0x000000 : 0x46515c);
+    this.wiperMarker.emissiveIntensity = this.sim.wiper === "off" ? 0 : 0.8;
     const kmh = Math.abs(this.sim.speed) * 3.6;
     const baseFov = this.canvas.clientHeight > this.canvas.clientWidth ? 70 : 64;
     this.camera.fov = baseFov + Math.min(3, kmh * 0.04);

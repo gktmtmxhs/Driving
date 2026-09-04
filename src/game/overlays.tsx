@@ -432,14 +432,13 @@ export function TouchControls({ engine, hud }: { engine: EngineHandle | null; hu
   if (!engine) return null;
 
   return (
-    <div className="touch-controls touch-only pointer-events-none absolute inset-x-0 bottom-0 z-20 items-end justify-between gap-3 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-      <div className="steering-console relative h-28 shrink-0">
+    <div className="touch-controls touch-only pointer-events-none absolute inset-0 z-20">
+      <div className="steering-console pointer-events-none absolute">
         <div
           className="control-stalk control-stalk--left pointer-events-auto"
           role="group"
           aria-label="왼쪽 콤비네이션 레버"
         >
-          <span className="stalk-shaft" aria-hidden="true" />
           <button
             type="button"
             className={`turn-stalk turn-stalk--right ${hud.signal === "right" ? "is-active" : ""}`}
@@ -494,31 +493,25 @@ export function TouchControls({ engine, hud }: { engine: EngineHandle | null; hu
           </button>
         </div>
 
-        <div className="steer-wheel-positioner absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2">
-          <div
-            ref={wheelRef}
-            className="steer-wheel pointer-events-auto grid size-28 touch-none place-items-center rounded-full border border-border bg-cluster/90 backdrop-blur-sm"
-            style={{ transform: `rotate(${-hud.steer * 70}deg)` }}
-            role="slider"
-            tabIndex={0}
-            aria-label="조향"
-            aria-valuemin={-100}
-            aria-valuemax={100}
-            aria-valuenow={Math.round(hud.steer * 100)}
-            aria-valuetext={
-              Math.abs(hud.steer) < 0.05
-                ? "중앙"
-                : hud.steer > 0
-                  ? `왼쪽 ${Math.round(hud.steer * 100)}`
-                  : `오른쪽 ${Math.round(-hud.steer * 100)}`
-            }
-          >
-            <div className="relative size-16 rounded-full border-2 border-muted/50">
-              <span className="absolute left-1/2 top-1/2 h-0.5 w-14 -translate-x-1/2 -translate-y-1/2 bg-muted/45" />
-              <span className="absolute left-1/2 top-1/2 h-14 w-0.5 -translate-x-1/2 -translate-y-1/2 bg-muted/45" />
-              <span className="absolute left-1/2 top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-muted/70" />
-            </div>
-          </div>
+        <div
+          ref={wheelRef}
+          className="steer-touch-zone pointer-events-auto absolute left-1/2 touch-none rounded-full"
+          data-active={Math.abs(hud.steer) > 0.05}
+          role="slider"
+          tabIndex={0}
+          aria-label="화면의 실제 핸들을 드래그해 조향"
+          aria-valuemin={-100}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(hud.steer * 100)}
+          aria-valuetext={
+            Math.abs(hud.steer) < 0.05
+              ? "중앙"
+              : hud.steer > 0
+                ? `왼쪽 ${Math.round(hud.steer * 100)}`
+                : `오른쪽 ${Math.round(-hud.steer * 100)}`
+          }
+        >
+          <span className="sr-only">핸들 조작 영역</span>
         </div>
 
         <div
@@ -526,7 +519,6 @@ export function TouchControls({ engine, hud }: { engine: EngineHandle | null; hu
           role="group"
           aria-label="오른쪽 와이퍼 레버"
         >
-          <span className="stalk-shaft" aria-hidden="true" />
           <button
             type="button"
             className={`stalk-body stalk-body--right ${hud.wiper !== "off" ? "is-active" : ""}`}
@@ -541,7 +533,7 @@ export function TouchControls({ engine, hud }: { engine: EngineHandle | null; hu
           </button>
         </div>
       </div>
-      <div className="pointer-events-auto flex flex-col items-end gap-2">
+      <div className="pedal-deck pointer-events-auto absolute right-3 flex flex-col items-end gap-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="flex gap-2">
           <GearSelector engine={engine} hud={hud} />
         </div>

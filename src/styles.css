@@ -153,14 +153,40 @@ body {
 }
 
 .steering-console {
-  width: 15rem;
+  left: 50%;
+  bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) - 0.35rem);
+  width: 17rem;
+  height: 7rem;
+  transform: translateX(-50%);
+}
+
+.steer-touch-zone {
+  bottom: -1.35rem;
+  width: 8.75rem;
+  height: 8.75rem;
+  transform: translateX(-50%);
+  border: 1px solid transparent;
+  background: transparent;
+}
+
+.steer-touch-zone[data-active="true"] {
+  box-shadow: inset 0 0 0 1px rgb(197 206 216 / 0.08);
+}
+
+.steer-touch-zone:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -0.35rem;
+}
+
+.pedal-deck {
+  bottom: 0;
 }
 
 .control-stalk {
   position: absolute;
   inset-block: 0;
   z-index: 5;
-  width: 5.25rem;
+  width: 5rem;
 }
 
 .control-stalk--left {
@@ -171,36 +197,14 @@ body {
   right: 0;
 }
 
-.stalk-shaft {
-  position: absolute;
-  top: 50%;
-  height: 0.55rem;
-  width: 3.5rem;
-  border: 1px solid rgb(232 234 238 / 0.16);
-  background: linear-gradient(180deg, #353a41, #15181d 62%);
-  box-shadow: 0 3px 8px rgb(0 0 0 / 0.42);
-}
-
-.control-stalk--left .stalk-shaft {
-  right: -1.15rem;
-  transform: translateY(-50%) rotate(7deg);
-  transform-origin: right center;
-}
-
-.control-stalk--right .stalk-shaft {
-  left: -1.15rem;
-  transform: translateY(-50%) rotate(-7deg);
-  transform-origin: left center;
-}
-
 .stalk-body,
 .turn-stalk {
-  border: 1px solid rgb(232 234 238 / 0.2);
+  border: 1px solid rgb(232 234 238 / 0.16);
   color: var(--color-fg);
-  background: linear-gradient(180deg, rgb(52 57 64 / 0.96), rgb(18 21 26 / 0.96));
+  background: linear-gradient(180deg, rgb(39 44 51 / 0.72), rgb(10 12 16 / 0.72));
   box-shadow:
-    inset 0 1px rgb(255 255 255 / 0.08),
-    0 5px 12px rgb(0 0 0 / 0.34);
+    inset 0 1px rgb(255 255 255 / 0.06),
+    0 4px 10px rgb(0 0 0 / 0.22);
   backdrop-filter: blur(8px);
 }
 
@@ -209,7 +213,7 @@ body {
   top: 50%;
   left: 0;
   display: grid;
-  width: 5rem;
+  width: 4.75rem;
   height: 2.75rem;
   grid-template-columns: 1fr 1fr;
   overflow: hidden;
@@ -246,17 +250,17 @@ body {
 
 .stalk-function.is-active {
   color: #65c889;
-  background: rgb(61 154 106 / 0.17);
+  background: rgb(61 154 106 / 0.22);
 }
 
 .stalk-function.is-high {
   color: #6aa9ff;
-  background: rgb(64 126 218 / 0.2);
+  background: rgb(64 126 218 / 0.24);
 }
 
 .turn-stalk {
   position: absolute;
-  left: 0.4rem;
+  left: 0.25rem;
   z-index: 2;
   display: grid;
   width: 2.75rem;
@@ -289,8 +293,8 @@ body {
   top: 50%;
   right: 0;
   display: grid;
-  width: 4.2rem;
-  height: 3.25rem;
+  width: 4rem;
+  height: 3rem;
   place-items: center;
   gap: 0;
   border-radius: 0.3rem 0.7rem 0.7rem 0.3rem;
@@ -406,6 +410,10 @@ body {
     display: flex;
     animation: rotate-prompt-out 5s ease 1.5s forwards;
   }
+
+  .control-stalk--right {
+    right: 4.25rem;
+  }
 }
 
 @keyframes rotate-prompt-out {
@@ -432,11 +440,6 @@ body {
     width: 13.5rem;
   }
 
-  .steer-wheel {
-    width: 6rem;
-    height: 6rem;
-  }
-
   .control-stalk {
     width: 4.6rem;
   }
@@ -460,18 +463,13 @@ body {
     padding-right: max(1rem, env(safe-area-inset-right));
   }
 
-  .steer-wheel {
-    width: 6rem;
-    height: 6rem;
-  }
-
   .pedal-control {
     height: 4.5rem;
   }
 
   .hud-bottom {
     margin-bottom: 0.75rem;
-    padding-left: 15rem;
+    padding-left: 0;
     padding-right: 7rem;
   }
 
