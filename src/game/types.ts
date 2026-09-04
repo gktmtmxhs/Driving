@@ -8,13 +8,7 @@ export type LightColor = "green" | "yellow" | "red";
 
 export type Phase = "menu" | "playing" | "paused" | "results";
 
-export type WaypointAction =
-  | "straight"
-  | "left"
-  | "right"
-  | "hold"
-  | "park"
-  | "finish";
+export type WaypointAction = "straight" | "left" | "right" | "hold" | "park" | "finish";
 
 export type Waypoint = {
   x: number;
@@ -49,6 +43,7 @@ export type HudState = {
   signalBlink: boolean;
   score: number;
   instruction: string;
+  instructionAction: WaypointAction;
   instructionDist: number;
   hint: string;
   violations: Violation[];
@@ -76,6 +71,7 @@ export const INITIAL_HUD: HudState = {
   signalBlink: false,
   score: 100,
   instruction: "",
+  instructionAction: "straight",
   instructionDist: 0,
   hint: "",
   violations: [],

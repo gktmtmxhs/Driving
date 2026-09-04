@@ -5,6 +5,7 @@ import {
   Menu,
   PauseMenu,
   Results,
+  RotatePrompt,
   StartCountdown,
   StartGuide,
   TouchControls,
@@ -55,7 +56,7 @@ export function DrivingApp() {
       }
       setCountdown(null);
       engineRef.current?.start(countdown.course);
-    }, 850);
+    }, 1000);
     return () => window.clearTimeout(timer);
   }, [countdown]);
 
@@ -102,6 +103,7 @@ export function DrivingApp() {
         <>
           <Hud hud={hud} onPause={() => engineRef.current?.pause()} />
           <TouchControls engine={ready ? engineRef.current : null} hud={hud} />
+          <RotatePrompt />
           <DesktopHint />
         </>
       ) : null}

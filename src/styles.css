@@ -172,8 +172,14 @@ body {
   background: rgb(10 12 16 / 0.68);
   padding: 1px 4px;
   color: var(--color-fg);
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 600;
   line-height: 1.35;
+}
+
+.rotate-prompt {
+  display: none;
+  max-width: calc(100% - 2rem);
 }
 
 .camera-frame--left,
@@ -233,9 +239,57 @@ body {
   }
 }
 
+@media (any-pointer: coarse) and (orientation: portrait) {
+  .rotate-prompt {
+    bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 7.75rem);
+    display: flex;
+    animation: rotate-prompt-out 5s ease 1.5s forwards;
+  }
+}
+
+@keyframes rotate-prompt-out {
+  0%,
+  75% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  100% {
+    visibility: hidden;
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+}
+
+@media (max-width: 380px) {
+  .touch-controls {
+    gap: 0.5rem;
+    padding-inline: 0.5rem;
+  }
+
+  .steer-wheel {
+    width: 6rem;
+    height: 6rem;
+  }
+
+  .signal-control {
+    min-width: 2.5rem;
+    padding-inline: 0.625rem;
+  }
+
+  .gear-selector > button {
+    width: 2.5rem;
+  }
+
+  .pedal-control {
+    width: 3.5rem;
+  }
+}
+
 @media (orientation: landscape) and (max-height: 500px) {
   .touch-controls {
-    padding-inline: max(1rem, env(safe-area-inset-left));
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
   }
 
   .steer-wheel {

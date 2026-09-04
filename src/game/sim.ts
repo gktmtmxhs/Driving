@@ -1,6 +1,15 @@
 import type { Actions } from "./input";
 import { GRID, LANE, ROAD_HALF, cycleLights, type WorldRuntime } from "./world";
-import type { CourseId, Gear, HudState, LightColor, Phase, Signal, Violation } from "./types";
+import type {
+  CourseId,
+  Gear,
+  HudState,
+  LightColor,
+  Phase,
+  Signal,
+  Violation,
+  WaypointAction,
+} from "./types";
 
 const WHEELBASE = 2.65;
 const ACCEL = 7.4;
@@ -82,6 +91,7 @@ export class Sim {
   onRoad = true;
   light: LightColor | "none" = "none";
   instruction = "";
+  instructionAction: WaypointAction = "straight";
   instructionDist = 0;
   hint = "";
   violations: Violation[] = [];
@@ -114,6 +124,9 @@ export class Sim {
     this.signal = "off";
     this.score = 100;
     this.time = 0;
+    this.instruction = "";
+    this.instructionAction = "straight";
+    this.instructionDist = 0;
     this.holdSec = 0;
     this.parked = false;
     this.failed = false;
@@ -303,6 +316,7 @@ export class Sim {
       finish: "목적지 · 정차",
     };
     this.instruction = wp.hint ?? labels[wp.action] ?? "";
+    this.instructionAction = wp.action;
 
     if (wp.action === "left" && this.signal === "left") this.signaledForWp.add(this.wpIndex);
     if (wp.action === "right" && this.signal === "right") this.signaledForWp.add(this.wpIndex);
@@ -523,6 +537,7 @@ export class Sim {
       signalBlink: this.signalBlink,
       score: this.score,
       instruction: this.instruction,
+      instructionAction: this.instructionAction,
       instructionDist: this.instructionDist,
       hint: this.lastHintT > 0 ? this.hint : "",
       violations: this.violations,

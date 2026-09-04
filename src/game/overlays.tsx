@@ -1,4 +1,4 @@
-import { ArrowLeft, Pause, Play, RotateCcw, Volume2, VolumeX } from "lucide-react";
+import { ArrowLeft, Pause, Play, RotateCcw, RotateCw, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { CourseId, HudState } from "./types";
 import { useEffect, useRef, type CSSProperties } from "react";
@@ -149,8 +149,8 @@ export function StartGuide({
           />
           <GuideRow
             badge="등·기어"
-            title="좌·우 또는 D/R 누르기"
-            desc="방향등은 같은 버튼을 다시 누르면 꺼집니다."
+            title="방향등과 D·R을 따로 선택"
+            desc="D는 전진, R은 후진입니다. 미러의 왼쪽 뒤·오른쪽 뒤 표기를 확인하세요."
           />
         </div>
         <p className="mt-4 rounded-lg bg-surface-2 px-3 py-2 text-sm leading-relaxed text-muted">
@@ -205,7 +205,7 @@ export function Hud({ hud, onPause }: { hud: HudState; onPause: () => void }) {
       <div className="flex items-start justify-between gap-2">
         <div className="pointer-events-auto flex items-center gap-2">
           <div className="rounded-md border border-border bg-cluster/80 px-3 py-2 backdrop-blur-sm">
-            <p className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted">
               {hud.course === "exam" ? "모드" : "점수"}
             </p>
             <p className="hud-num text-xl font-semibold text-fg">
@@ -221,7 +221,7 @@ export function Hud({ hud, onPause }: { hud: HudState; onPause: () => void }) {
         </div>
         <div className="flex items-center gap-2">
           <div className="rounded-md border border-border bg-cluster/80 px-3 py-2 text-right backdrop-blur-sm">
-            <p className="text-[10px] font-medium text-muted">{fmtTime(hud.timeSec)}</p>
+            <p className="text-xs font-medium text-muted">{fmtTime(hud.timeSec)}</p>
             <p className="hud-num text-sm text-fg">{Math.round(hud.progress * 100)}%</p>
           </div>
           <Button
@@ -236,13 +236,31 @@ export function Hud({ hud, onPause }: { hud: HudState; onPause: () => void }) {
         </div>
       </div>
 
-      <div className="hud-instruction mx-auto max-w-md text-center" aria-live="polite">
-        <p className="rounded-md bg-cluster/75 px-3 py-2 text-sm font-medium text-fg backdrop-blur-sm">
-          {hud.instructionDist > 4
-            ? `${Math.round(hud.instructionDist)}m 앞 · ${hud.instruction}`
-            : hud.instruction}
-        </p>
-        {hud.hint ? <p className="mt-2 text-sm text-caution">{hud.hint}</p> : null}
+      <div className="hud-instruction mx-auto max-w-md text-center">
+        <div
+          className="route-cue inline-flex max-w-full items-center gap-3 rounded-lg border border-border bg-cluster/80 px-3 py-2 text-left shadow-lg backdrop-blur-sm"
+          aria-label={`${Math.max(0, Math.round(hud.instructionDist))}미터 앞 ${hud.instruction || "경로 확인 중"}`}
+        >
+          <span
+            className="route-cue-symbol grid size-11 shrink-0 place-items-center rounded-md bg-accent text-xl font-semibold text-bg"
+            aria-hidden="true"
+          >
+            {routeSymbol(hud.instructionAction)}
+          </span>
+          <span className="min-w-0">
+            <span className="block text-xs font-medium text-muted">
+              {hud.instructionDist > 4 ? `${Math.round(hud.instructionDist)}m 앞` : "바로 앞"}
+            </span>
+            <span className="block truncate text-sm font-semibold text-fg">
+              {hud.instruction || "경로 확인 중"}
+            </span>
+          </span>
+        </div>
+        {hud.hint ? (
+          <p className="mt-2 text-sm font-medium text-caution" role="status">
+            {hud.hint}
+          </p>
+        ) : null}
       </div>
 
       <CameraFrames reverse={hud.reverseCam} />
@@ -254,7 +272,7 @@ export function Hud({ hud, onPause }: { hud: HudState; onPause: () => void }) {
             <p className="hud-num text-4xl font-semibold leading-none text-fg">
               {Math.round(hud.speedKmh)}
             </p>
-            <p className="mt-1 text-[10px] tracking-wide text-muted">km/h</p>
+            <p className="mt-1 text-xs tracking-wide text-muted">km/h</p>
           </div>
           <SignalLamp side="R" on={hud.signal === "right" && hud.signalBlink} />
         </div>
@@ -294,21 +312,30 @@ function lightLabel(light: "green" | "yellow" | "red") {
   return light === "green" ? "녹색" : light === "yellow" ? "황색" : "적색";
 }
 
+function routeSymbol(action: HudState["instructionAction"]) {
+  if (action === "left") return "←";
+  if (action === "right") return "→";
+  if (action === "hold") return "정지";
+  if (action === "park") return "P";
+  if (action === "finish") return "도착";
+  return "↑";
+}
+
 function CameraFrames({ reverse }: { reverse: boolean }) {
   if (reverse) {
     return (
       <div className="camera-frame camera-frame--reverse" aria-hidden="true">
-        <span>후방</span>
+        <span>차량 뒤</span>
       </div>
     );
   }
   return (
     <>
       <div className="camera-frame camera-frame--left" aria-hidden="true">
-        <span>좌측</span>
+        <span>왼쪽 뒤</span>
       </div>
       <div className="camera-frame camera-frame--right" aria-hidden="true">
-        <span>우측</span>
+        <span>오른쪽 뒤</span>
       </div>
     </>
   );
@@ -410,7 +437,7 @@ export function TouchControls({ engine, hud }: { engine: EngineHandle | null; hu
         <div className="flex gap-2">
           <button
             type="button"
-            className={`h-11 min-w-11 rounded-md border px-3 text-sm font-semibold transition-colors ${
+            className={`signal-control h-11 min-w-11 rounded-md border px-3 text-sm font-semibold transition-colors ${
               hud.signal === "left" ? "border-go bg-go text-bg" : "border-border bg-surface text-fg"
             }`}
             aria-label="왼쪽 방향지시등"
@@ -424,7 +451,7 @@ export function TouchControls({ engine, hud }: { engine: EngineHandle | null; hu
           </button>
           <button
             type="button"
-            className={`h-11 min-w-11 rounded-md border px-3 text-sm font-semibold transition-colors ${
+            className={`signal-control h-11 min-w-11 rounded-md border px-3 text-sm font-semibold transition-colors ${
               hud.signal === "right"
                 ? "border-go bg-go text-bg"
                 : "border-border bg-surface text-fg"
@@ -438,21 +465,7 @@ export function TouchControls({ engine, hud }: { engine: EngineHandle | null; hu
           >
             →
           </button>
-          <button
-            type="button"
-            className={`h-11 min-w-14 rounded-md border border-border px-2 text-sm font-semibold disabled:opacity-40 ${
-              hud.gear === "R" ? "bg-stop text-fg" : "bg-surface text-fg"
-            }`}
-            disabled={hud.speedKmh >= 1}
-            aria-label={`현재 ${hud.gear} 기어. ${hud.gear === "R" ? "주행" : "후진"} 기어로 변경`}
-            onClick={() => {
-              if (hud.gear === "R") engine.input.triggerGearDrive();
-              else engine.input.triggerGearReverse();
-              vibrate();
-            }}
-          >
-            D/R
-          </button>
+          <GearSelector engine={engine} hud={hud} />
         </div>
         <div className="flex gap-2">
           <Pedal
@@ -472,6 +485,41 @@ export function TouchControls({ engine, hud }: { engine: EngineHandle | null; hu
           />
         </div>
       </div>
+    </div>
+  );
+}
+
+function GearSelector({ engine, hud }: { engine: EngineHandle; hud: HudState }) {
+  const moving = hud.speedKmh >= 1;
+  return (
+    <div
+      className="gear-selector flex h-11 overflow-hidden rounded-md border border-border bg-surface p-0.5"
+      role="group"
+      aria-label="주행 기어"
+    >
+      {(["D", "R"] as const).map((gear) => {
+        const selected = hud.gear === gear;
+        return (
+          <button
+            key={gear}
+            type="button"
+            className={`grid w-11 place-items-center rounded text-sm font-semibold transition-colors disabled:opacity-40 ${
+              selected ? (gear === "R" ? "bg-stop text-fg" : "bg-accent text-bg") : "text-muted"
+            }`}
+            disabled={moving && !selected}
+            aria-label={`${gear === "D" ? "전진" : "후진"} 기어${selected ? ", 현재 선택됨" : ""}`}
+            aria-pressed={selected}
+            onClick={() => {
+              if (selected) return;
+              if (gear === "D") engine.input.triggerGearDrive();
+              else engine.input.triggerGearReverse();
+              vibrate();
+            }}
+          >
+            {gear}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -518,6 +566,15 @@ function Pedal({
 
 function vibrate() {
   if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate(8);
+}
+
+export function RotatePrompt() {
+  return (
+    <div className="rotate-prompt pointer-events-none absolute inset-x-0 z-20 mx-auto w-max items-center gap-2 rounded-full border border-border bg-cluster/90 px-3 py-2 text-sm text-fg shadow-lg backdrop-blur-sm">
+      <RotateCw className="size-4 text-accent" aria-hidden="true" />
+      가로로 돌리면 시야와 미러가 넓어집니다
+    </div>
+  );
 }
 
 export function PauseMenu({
