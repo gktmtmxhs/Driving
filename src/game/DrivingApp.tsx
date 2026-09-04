@@ -1,5 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { DesktopHint, Hud, Menu, PauseMenu, Results, TouchControls } from "./overlays";
+import {
+  DesktopHint,
+  Hud,
+  Menu,
+  PauseMenu,
+  Results,
+  StartCountdown,
+  StartGuide,
+  TouchControls,
+} from "./overlays";
 import { useDrive } from "./store";
 import type { CourseId } from "./types";
 import type { DriveEngine } from "./engine";
@@ -7,8 +16,9 @@ import type { DriveEngine } from "./engine";
 export function DrivingApp() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<DriveEngine | null>(null);
-  const pendingRef = useRef<CourseId | null>(null);
   const [ready, setReady] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<CourseId | null>(null);
+  const [countdown, setCountdown] = useState<{ course: CourseId; value: number } | null>(null);
   const phase = useDrive((s) => s.phase);
   const hud = useDrive((s) => s.hud);
   const muted = useDrive((s) => s.muted);
@@ -24,12 +34,8 @@ export function DrivingApp() {
       engine = new DriveEngine(canvasRef.current);
       engineRef.current = engine;
       setReady(true);
-      const queued = pendingRef.current;
       const qa = new URLSearchParams(window.location.search).get("qa");
-      if (queued) {
-        pendingRef.current = null;
-        engine.start(queued);
-      } else if (qa === "1") {
+      if (qa === "1") {
         engine.start("city");
       }
     });
@@ -40,19 +46,18 @@ export function DrivingApp() {
     };
   }, []);
 
-  const start = (course: CourseId) => {
-    const eng =
-      engineRef.current ??
-      (typeof window !== "undefined" ? window.__driveEngine : null) ??
-      null;
-    if (!eng) {
-      pendingRef.current = course;
-      return;
-    }
-    eng.audio.unlock();
-    eng.audio.setMuted(useDrive.getState().muted);
-    eng.start(course);
-  };
+  useEffect(() => {
+    if (!countdown) return;
+    const timer = window.setTimeout(() => {
+      if (countdown.value > 1) {
+        setCountdown({ ...countdown, value: countdown.value - 1 });
+        return;
+      }
+      setCountdown(null);
+      engineRef.current?.start(countdown.course);
+    }, 850);
+    return () => window.clearTimeout(timer);
+  }, [countdown]);
 
   const retry = () => {
     const eng = engineRef.current;
@@ -60,12 +65,22 @@ export function DrivingApp() {
     eng.start(hud.course);
   };
 
+  const launch = () => {
+    if (!selectedCourse) return;
+    const eng = engineRef.current;
+    if (!eng) return;
+    eng.audio.unlock();
+    eng.audio.setMuted(useDrive.getState().muted);
+    setCountdown({ course: selectedCourse, value: 3 });
+    setSelectedCourse(null);
+  };
+
   return (
     <main className="relative h-dvh w-full overflow-hidden bg-bg text-fg">
       <canvas ref={canvasRef} className="drive-canvas absolute inset-0 h-full w-full" />
       {phase === "menu" ? (
         <Menu
-          onStart={start}
+          onStart={setSelectedCourse}
           muted={muted}
           onMute={() => {
             const next = !muted;
@@ -74,6 +89,15 @@ export function DrivingApp() {
           }}
         />
       ) : null}
+      {phase === "menu" && selectedCourse ? (
+        <StartGuide
+          course={selectedCourse}
+          ready={ready}
+          onBack={() => setSelectedCourse(null)}
+          onStart={launch}
+        />
+      ) : null}
+      {countdown ? <StartCountdown count={countdown.value} /> : null}
       {phase === "playing" ? (
         <>
           <Hud hud={hud} onPause={() => engineRef.current?.pause()} />

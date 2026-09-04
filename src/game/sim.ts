@@ -1,21 +1,6 @@
-import type { Input } from "./input";
-import {
-  GRID,
-  LANE,
-  ROAD_HALF,
-  cycleLights,
-  type Cone,
-  type WorldRuntime,
-} from "./world";
-import type {
-  CourseId,
-  Gear,
-  HudState,
-  LightColor,
-  Phase,
-  Signal,
-  Violation,
-} from "./types";
+import type { Actions } from "./input";
+import { GRID, LANE, ROAD_HALF, cycleLights, type WorldRuntime } from "./world";
+import type { CourseId, Gear, HudState, LightColor, Phase, Signal, Violation } from "./types";
 
 const WHEELBASE = 2.65;
 const ACCEL = 7.4;
@@ -177,9 +162,25 @@ export class Sim {
     this.steer = 0;
   }
 
-  step(dt: number, input: Input) {
+  applyControlEdges(input: Actions) {
     if (this.phase !== "playing") return;
-    const a = input.snapshot();
+    if (input.gearReverseEdge || input.gearDriveEdge) {
+      if (Math.abs(this.speed) < 0.35) {
+        if (input.gearReverseEdge) this.gear = "R";
+        if (input.gearDriveEdge) this.gear = "D";
+      } else {
+        this.hint = "정차한 뒤 기어를 변경하세요";
+        this.lastHintT = 2.4;
+      }
+    }
+    if (input.signalLeftEdge) this.signal = this.signal === "left" ? "off" : "left";
+    if (input.signalRightEdge) this.signal = this.signal === "right" ? "off" : "right";
+    if (input.signalOffEdge) this.signal = "off";
+    if (input.respawnEdge) this.respawn();
+  }
+
+  step(dt: number, a: Actions) {
+    if (this.phase !== "playing") return;
     this.time += dt;
 
     for (const [k, v] of this.cooldowns) {
@@ -187,15 +188,6 @@ export class Sim {
       if (n <= 0) this.cooldowns.delete(k);
       else this.cooldowns.set(k, n);
     }
-
-    if (input.gearReverseEdge) this.gear = "R";
-    if (input.gearDriveEdge) this.gear = "D";
-    if (input.signalLeftEdge)
-      this.signal = this.signal === "left" ? "off" : "left";
-    if (input.signalRightEdge)
-      this.signal = this.signal === "right" ? "off" : "right";
-    if (input.signalOffEdge) this.signal = "off";
-    if (input.respawnEdge) this.respawn();
 
     this.throttle = a.throttle;
     this.brake = a.brake;
@@ -317,8 +309,7 @@ export class Sim {
 
     if (wp.action === "hold" && this.world.holdZone) {
       const h = this.world.holdZone;
-      const inside =
-        this.x > h.minX && this.x < h.maxX && this.z > h.minZ && this.z < h.maxZ;
+      const inside = this.x > h.minX && this.x < h.maxX && this.z > h.minZ && this.z < h.maxZ;
       if (inside && Math.abs(this.speed) < 0.35) {
         this.holdSec += dt;
         if (this.holdSec >= 3 && !this.holdDone) {
@@ -407,8 +398,7 @@ export class Sim {
     this.light = d < 28 ? my : "none";
 
     const inBox =
-      Math.abs(this.x - p.x) < ROAD_HALF + 1.2 &&
-      Math.abs(this.z - p.z) < ROAD_HALF + 1.2;
+      Math.abs(this.x - p.x) < ROAD_HALF + 1.2 && Math.abs(this.z - p.z) < ROAD_HALF + 1.2;
     const key = `${p.x},${p.z}`;
     if (d < 18 && d > 8 && kmh < 2) this.stoppedHere.add(key);
     if (inBox && my === "red" && kmh > 8) {
@@ -479,7 +469,9 @@ export class Sim {
         ped.x += ped.dir * speed * dt;
         if (ped.x > 8) ped.dir = -1;
         if (ped.x < -8) ped.dir = 1;
-        ped.z = ped.originZ + (ped.originZ === 0 ? (ped.dir > 0 ? -ROAD_HALF - 1.5 : ROAD_HALF + 1.5) : 0);
+        ped.z =
+          ped.originZ +
+          (ped.originZ === 0 ? (ped.dir > 0 ? -ROAD_HALF - 1.5 : ROAD_HALF + 1.5) : 0);
         if (ped.originZ === 0) ped.z = ped.dir > 0 ? -ROAD_HALF - 1.6 : ROAD_HALF + 1.6;
       } else {
         ped.z += ped.dir * speed * dt;

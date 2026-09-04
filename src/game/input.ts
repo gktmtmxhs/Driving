@@ -4,6 +4,12 @@ export type Actions = {
   steer: number;
   horn: boolean;
   pauseEdge: boolean;
+  gearDriveEdge: boolean;
+  gearReverseEdge: boolean;
+  signalLeftEdge: boolean;
+  signalRightEdge: boolean;
+  signalOffEdge: boolean;
+  respawnEdge: boolean;
 };
 
 const GAME_CODES = new Set([
@@ -42,12 +48,12 @@ export class Input {
   throttleTouch = 0;
   brakeTouch = 0;
   steerOverride: number | null = null;
-  gearDriveEdge = false;
-  gearReverseEdge = false;
-  signalLeftEdge = false;
-  signalRightEdge = false;
-  signalOffEdge = false;
-  respawnEdge = false;
+  private queuedGearDrive = false;
+  private queuedGearReverse = false;
+  private queuedSignalLeft = false;
+  private queuedSignalRight = false;
+  private queuedSignalOff = false;
+  private queuedRespawn = false;
   private prevPause = false;
   private prevQ = false;
   private prevE = false;
@@ -65,17 +71,22 @@ export class Input {
     const up = (e: KeyboardEvent) => {
       this.keys.delete(e.code);
     };
-    const clear = () => this.keys.clear();
+    const clear = () => {
+      this.keys.clear();
+      this.resetTouch();
+    };
+    const visibility = () => {
+      if (document.hidden) clear();
+    };
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
     window.addEventListener("blur", clear);
-    document.addEventListener("visibilitychange", () => {
-      if (document.hidden) clear();
-    });
+    document.addEventListener("visibilitychange", visibility);
     this.unbind.push(() => {
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
       window.removeEventListener("blur", clear);
+      document.removeEventListener("visibilitychange", visibility);
     });
   }
 
@@ -83,6 +94,43 @@ export class Input {
     for (const fn of this.unbind) fn();
     this.unbind = [];
     this.keys.clear();
+    this.resetTouch();
+  }
+
+  triggerGearDrive() {
+    this.queuedGearDrive = true;
+  }
+
+  triggerGearReverse() {
+    this.queuedGearReverse = true;
+  }
+
+  triggerSignalLeft() {
+    this.queuedSignalLeft = true;
+  }
+
+  triggerSignalRight() {
+    this.queuedSignalRight = true;
+  }
+
+  triggerSignalOff() {
+    this.queuedSignalOff = true;
+  }
+
+  triggerRespawn() {
+    this.queuedRespawn = true;
+  }
+
+  resetTouch() {
+    this.steerTouch = 0;
+    this.throttleTouch = 0;
+    this.brakeTouch = 0;
+    this.queuedGearDrive = false;
+    this.queuedGearReverse = false;
+    this.queuedSignalLeft = false;
+    this.queuedSignalRight = false;
+    this.queuedSignalOff = false;
+    this.queuedRespawn = false;
   }
 
   setKeys(codes: string[]) {
@@ -107,8 +155,7 @@ export class Input {
     let throttle = this.throttleTouch;
     let brake = this.brakeTouch;
     if (k.has("KeyW") || k.has("ArrowUp")) throttle = Math.max(throttle, 1);
-    if (k.has("KeyS") || k.has("ArrowDown") || k.has("Space"))
-      brake = Math.max(brake, 1);
+    if (k.has("KeyS") || k.has("ArrowDown") || k.has("Space")) brake = Math.max(brake, 1);
     if (k.has("ShiftLeft")) brake = Math.max(brake, 1);
 
     const pads = typeof navigator !== "undefined" ? navigator.getGamepads?.() : [];
@@ -139,12 +186,18 @@ export class Input {
     const c = k.has("KeyC");
     const x = k.has("KeyX");
     const r = k.has("KeyR");
-    this.gearReverseEdge = q && !this.prevQ;
-    this.gearDriveEdge = e && !this.prevE;
-    this.signalLeftEdge = z && !this.prevZ;
-    this.signalRightEdge = c && !this.prevC;
-    this.signalOffEdge = x && !this.prevX;
-    this.respawnEdge = r && !this.prevR;
+    const gearReverseEdge = this.queuedGearReverse || (q && !this.prevQ);
+    const gearDriveEdge = this.queuedGearDrive || (e && !this.prevE);
+    const signalLeftEdge = this.queuedSignalLeft || (z && !this.prevZ);
+    const signalRightEdge = this.queuedSignalRight || (c && !this.prevC);
+    const signalOffEdge = this.queuedSignalOff || (x && !this.prevX);
+    const respawnEdge = this.queuedRespawn || (r && !this.prevR);
+    this.queuedGearReverse = false;
+    this.queuedGearDrive = false;
+    this.queuedSignalLeft = false;
+    this.queuedSignalRight = false;
+    this.queuedSignalOff = false;
+    this.queuedRespawn = false;
     this.prevQ = q;
     this.prevE = e;
     this.prevZ = z;
@@ -158,6 +211,12 @@ export class Input {
       steer,
       horn: k.has("KeyH"),
       pauseEdge,
+      gearDriveEdge,
+      gearReverseEdge,
+      signalLeftEdge,
+      signalRightEdge,
+      signalOffEdge,
+      respawnEdge,
     };
   }
 }

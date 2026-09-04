@@ -37,6 +37,8 @@ export class DriveEngine {
   private scene = new THREE.Scene();
   private camera: THREE.PerspectiveCamera;
   private rearCam: THREE.PerspectiveCamera;
+  private leftMirrorCam: THREE.PerspectiveCamera;
+  private rightMirrorCam: THREE.PerspectiveCamera;
   private rig = new THREE.Group();
   private wheel!: THREE.Object3D;
   private world: WorldRuntime | null = null;
@@ -52,14 +54,14 @@ export class DriveEngine {
   private lastLightKey = "";
   private running = false;
   private disposed = false;
+  private needsRender = true;
   private resizeObs: ResizeObserver;
   private sun!: THREE.DirectionalLight;
   private canvas: HTMLCanvasElement;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
-    const mobile =
-      window.innerWidth < 700 || matchMedia("(pointer: coarse)").matches;
+    const mobile = window.innerWidth < 700 || matchMedia("(pointer: coarse)").matches;
     this.renderer = new THREE.WebGLRenderer({
       canvas,
       antialias: !mobile,
@@ -102,9 +104,21 @@ export class DriveEngine {
     this.rearCam.position.set(0, 1.15, 2.15);
     this.rearCam.rotation.y = Math.PI;
 
+    this.leftMirrorCam = new THREE.PerspectiveCamera(58, 2.05, 0.15, 180);
+    this.leftMirrorCam.layers.set(0);
+    this.leftMirrorCam.position.set(-0.82, 1.12, -0.05);
+    this.leftMirrorCam.rotation.y = Math.PI - 0.16;
+
+    this.rightMirrorCam = new THREE.PerspectiveCamera(58, 2.05, 0.15, 180);
+    this.rightMirrorCam.layers.set(0);
+    this.rightMirrorCam.position.set(0.82, 1.12, -0.05);
+    this.rightMirrorCam.rotation.y = Math.PI + 0.16;
+
     this.scene.add(this.rig);
     this.rig.add(this.camera);
     this.rig.add(this.rearCam);
+    this.rig.add(this.leftMirrorCam);
+    this.rig.add(this.rightMirrorCam);
     this.buildInterior();
 
     this.lightOn = {
@@ -134,6 +148,7 @@ export class DriveEngine {
     this.resize();
     this.resizeObs = new ResizeObserver(() => this.resize());
     this.resizeObs.observe(canvas.parentElement ?? canvas);
+    document.addEventListener("visibilitychange", this.onVisibilityChange);
 
     this.tick = this.tick.bind(this);
     this.raf = requestAnimationFrame(this.tick);
@@ -152,10 +167,6 @@ export class DriveEngine {
   private buildInterior() {
     const interior = new THREE.Group();
     interior.traverse(() => {});
-    const dashMat = new THREE.MeshStandardMaterial({
-      color: 0x1c1e22,
-      roughness: 0.7,
-    });
     const vinyl = new THREE.MeshStandardMaterial({
       color: 0x2a2622,
       roughness: 0.85,
@@ -243,6 +254,7 @@ export class DriveEngine {
     this.sim.boot(course, this.world);
     this.spawnActors();
     this.running = true;
+    this.needsRender = true;
     this.last = performance.now();
     this.acc = 0;
     this.audio.unlock();
@@ -254,6 +266,8 @@ export class DriveEngine {
   pause() {
     if (this.sim.phase === "playing") {
       this.sim.phase = "paused";
+      this.input.resetTouch();
+      this.needsRender = true;
       useDrive.getState().setHud(this.sim.hud());
     }
   }
@@ -262,6 +276,7 @@ export class DriveEngine {
     if (this.sim.phase === "paused") {
       this.sim.phase = "playing";
       this.last = performance.now();
+      this.needsRender = true;
       useDrive.getState().setHud(this.sim.hud());
     }
   }
@@ -272,7 +287,9 @@ export class DriveEngine {
     this.clearWorld();
     useDrive.getState().resetHud();
     this.input.setKeys([]);
+    this.input.resetTouch();
     this.input.steerOverride = null;
+    this.needsRender = true;
   }
 
   private spawnActors() {
@@ -319,6 +336,7 @@ export class DriveEngine {
     this.camera.updateProjectionMatrix();
     this.rearCam.aspect = 16 / 9;
     this.rearCam.updateProjectionMatrix();
+    this.needsRender = true;
   }
 
   private tick(now: number) {
@@ -327,25 +345,34 @@ export class DriveEngine {
     const dt = Math.min((now - this.last) / 1000, 0.1);
     this.last = now;
 
+    let shouldRender = this.needsRender;
     if (this.running && this.sim.phase === "playing") {
+      const actions = this.input.snapshot();
+      if (actions.pauseEdge) {
+        this.pause();
+      } else {
+        this.sim.applyControlEdges(actions);
+      }
+      if (actions.horn) this.audio.horn();
       this.acc += dt;
       const FIXED = 1 / 60;
       let steps = 0;
-      while (this.acc >= FIXED && steps < 5) {
-        this.sim.step(FIXED, this.input);
+      while (this.sim.phase === "playing" && this.acc >= FIXED && steps < 5) {
+        this.sim.step(FIXED, actions);
         this.acc -= FIXED;
         steps++;
       }
-      const actions = this.input.snapshot();
-      if (actions.pauseEdge) this.pause();
-      if (actions.horn) this.audio.horn();
+      shouldRender = true;
     } else if (this.sim.phase === "paused") {
       const actions = this.input.snapshot();
       if (actions.pauseEdge) this.resume();
     }
 
-    this.syncVisuals(dt);
-    this.render();
+    if (shouldRender) {
+      this.syncVisuals(dt);
+      this.render();
+      this.needsRender = false;
+    }
 
     if (now - this.lastHud > 50) {
       this.lastHud = now;
@@ -418,29 +445,65 @@ export class DriveEngine {
     r.setScissorTest(false);
     r.setViewport(0, 0, this.canvas.width, this.canvas.height);
     r.render(this.scene, this.camera);
-    if (this.running && this.sim.gear === "R") {
-      const w = this.canvas.width;
-      const h = this.canvas.height;
-      const rw = Math.floor(w * 0.3);
-      const rh = Math.floor(rw * 0.56);
-      const x = w - rw - Math.floor(w * 0.02);
-      const y = Math.floor(h * 0.02);
-      r.autoClear = false;
-      r.setScissorTest(true);
-      r.setViewport(x, y, rw, rh);
-      r.setScissor(x, y, rw, rh);
-      r.clearDepth();
-      r.render(this.scene, this.rearCam);
-      r.setScissorTest(false);
-      r.autoClear = true;
-      r.setViewport(0, 0, w, h);
+    if (!this.running) return;
+
+    const w = this.canvas.width;
+    const h = this.canvas.height;
+    const dpr = r.getPixelRatio();
+    const shortLandscape = w / h > 1.45 && h / dpr <= 500;
+    const topGap = Math.floor(shortLandscape ? 58 * dpr : Math.max(68 * dpr, h * 0.08));
+    r.autoClear = false;
+    r.setScissorTest(true);
+
+    if (this.sim.gear === "R") {
+      const rw = Math.floor(
+        Math.min(w * (shortLandscape ? 0.42 : 0.58), (shortLandscape ? 360 : 420) * dpr),
+      );
+      const rh = Math.floor(rw / (16 / 9));
+      this.renderInset(this.rearCam, Math.floor((w - rw) / 2), h - topGap - rh, rw, rh);
+    } else {
+      const mw = Math.floor(
+        Math.min(w * (shortLandscape ? 0.22 : 0.29), (shortLandscape ? 160 : 180) * dpr),
+      );
+      const mh = Math.floor(mw / 2.05);
+      const sideGap = Math.floor(Math.max(12 * dpr, w * 0.03));
+      const y = h - topGap - mh;
+      this.renderInset(this.leftMirrorCam, sideGap, y, mw, mh);
+      this.renderInset(this.rightMirrorCam, w - mw - sideGap, y, mw, mh);
     }
+
+    r.setScissorTest(false);
+    r.autoClear = true;
+    r.setViewport(0, 0, w, h);
   }
+
+  private renderInset(
+    camera: THREE.PerspectiveCamera,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+  ) {
+    const r = this.renderer;
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+    r.setViewport(x, Math.max(0, y), width, height);
+    r.setScissor(x, Math.max(0, y), width, height);
+    r.clear(true, true, true);
+    r.render(this.scene, camera);
+  }
+
+  private onVisibilityChange = () => {
+    if (!document.hidden) return;
+    this.input.resetTouch();
+    this.pause();
+  };
 
   dispose() {
     this.disposed = true;
     cancelAnimationFrame(this.raf);
     this.resizeObs.disconnect();
+    document.removeEventListener("visibilitychange", this.onVisibilityChange);
     this.input.dispose();
     this.audio.dispose();
     this.clearWorld();
